@@ -1,6 +1,6 @@
 # IPD-QMA: Detecting Heterogeneous Treatment Effects via Quantile Meta-Analysis of Individual Participant Data
 
-**Mahmood Ul Hassan**^1*
+**Mahmood Ahmad**^1*
 
 ^1 Independent Researcher
 
