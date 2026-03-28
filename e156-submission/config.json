@@ -1,0 +1,57 @@
+{
+  "title": "IPD-QMA: Detecting Heterogeneous Treatment Effects via Quantile Meta-Analysis of Individual Participant Data",
+  "slug": "ipd-qma-quantile-meta-analysis",
+  "author": "Mahmood Ahmad",
+  "date": "2026-03-26",
+  "path": "C:\\Models\\IPD_QMA",
+  "type": "methods",
+  "primary_estimand": "Quantile treatment effect",
+  "summary": "A two-stage framework combining quantile regression with random-effects pooling to detect treatment effect heterogeneity across the outcome distribution.",
+  "body": "Can quantile meta-analysis of individual participant data detect treatment effect heterogeneity that standard mean-difference pooling misses? IPD-QMA combines within-study quantile regression with DerSimonian-Laird random-effects pooling and Hartung-Knapp-Sidik-Jonkman correction across four distributional scenarios following the ADEMP simulation reporting framework. The two-stage framework estimates unconditional quantile treatment effects at five grid points via random-effects models, with a novel Slope Test formally contrasting effects at the 90th versus 10th percentile. Under pure scale shift with variance ratio at least 2.0, IPD-QMA detected the mean difference with 100 percent power and valid 95% CI coverage at K equals 10 while standard meta-analysis correctly retained the null. Type I error remained controlled between 0.8 and 4.9 percent, and coverage was verified against analytical ground truths at 95.1 percent or above. IPD-QMA complements existing tools by characterising treatment effect shape across the full outcome distribution. However, a limitation is that rank invariance required for individual-level causal interpretation remains untestable in observational settings.",
+  "sentences": [
+    {
+      "role": "Question",
+      "text": "Can quantile meta-analysis of individual participant data detect treatment effect heterogeneity that standard mean-difference pooling misses?"
+    },
+    {
+      "role": "Dataset",
+      "text": "IPD-QMA combines within-study quantile regression with DerSimonian-Laird random-effects pooling and Hartung-Knapp-Sidik-Jonkman correction across four distributional scenarios following the ADEMP simulation reporting framework."
+    },
+    {
+      "role": "Method",
+      "text": "The two-stage framework estimates unconditional quantile treatment effects at five grid points via random-effects models, with a novel Slope Test formally contrasting effects at the 90th versus 10th percentile."
+    },
+    {
+      "role": "Primary result",
+      "text": "Under pure scale shift with variance ratio at least 2.0, IPD-QMA detected the mean difference with 100 percent power and valid 95% CI coverage at K equals 10 while standard meta-analysis correctly retained the null."
+    },
+    {
+      "role": "Robustness",
+      "text": "Type I error remained controlled between 0.8 and 4.9 percent, and coverage was verified against analytical ground truths at 95.1 percent or above."
+    },
+    {
+      "role": "Interpretation",
+      "text": "IPD-QMA complements existing tools by characterising treatment effect shape across the full outcome distribution."
+    },
+    {
+      "role": "Boundary",
+      "text": "However, a limitation is that rank invariance required for individual-level causal interpretation remains untestable in observational settings."
+    }
+  ],
+  "notes": {
+    "app": "IPD-QMA Python library",
+    "data": "Monte Carlo simulation (4 distributions, ADEMP) + NHANES application",
+    "code": "https://github.com/mahmood726-cyber/ipd-qma",
+    "doi": "",
+    "version": "1.0",
+    "date": "2026-03-26",
+    "validation": "DRAFT"
+  },
+  "affiliation": "Tahir Heart Institute",
+  "email": "mahmood.ahmad2@nhs.net",
+  "references": [
+    "Borenstein M, Hedges LV, Higgins JPT, Rothstein HR. Introduction to Meta-Analysis. 2nd ed. Wiley; 2021.",
+    "Higgins JPT, Thompson SG, Deeks JJ, Altman DG. Measuring inconsistency in meta-analyses. BMJ. 2003;327(7414):557-560.",
+    "Cochrane Handbook for Systematic Reviews of Interventions. Version 6.4. Cochrane; 2023."
+  ]
+}
