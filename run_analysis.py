@@ -252,7 +252,9 @@ def run_simulation_study():
 
                 # Q90 — lookup by value, not hardcoded index
                 q90_row = results['profile'][results['profile']['Quantile'] == 0.9]
-                q90_p = q90_row['P'].values[0]
+                if q90_row.empty:
+                    continue
+                q90_p = q90_row['P'].values[0]  # sentinel:skip-line P1-empty-dataframe-access  (guarded by q90_row.empty above)
                 if q90_p < 0.05:
                     reject_q90 += 1
 

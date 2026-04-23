@@ -80,7 +80,9 @@ for sc_idx, sc in enumerate(scenarios):
             if results['md_test']['p_value'] < 0.05:
                 reject_md += 1
             q90_row = results['profile'][results['profile']['Quantile'] == 0.9]
-            q90_p = q90_row['P'].values[0]
+            if q90_row.empty:
+                continue
+            q90_p = q90_row['P'].values[0]  # sentinel:skip-line P1-empty-dataframe-access  (guarded by q90_row.empty above)
             if q90_p < 0.05:
                 reject_q90 += 1
             if results['slope_test']['p_value'] < 0.05:
