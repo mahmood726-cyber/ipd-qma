@@ -17,8 +17,9 @@ matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
 from scipy import stats
 
-# Ensure UTF-8 output on Windows
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+# Ensure UTF-8 output on Windows (skip under pytest to avoid breaking capture)
+if "pytest" not in sys.modules:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # Add parent dir to path
 sys.path.insert(0, os.path.dirname(__file__))

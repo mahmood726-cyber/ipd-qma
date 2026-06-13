@@ -14,10 +14,11 @@ import os
 import re
 import io
 
-try:
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-except Exception:
-    pass
+if "pytest" not in sys.modules:
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 from docx import Document
 from docx.shared import Pt, Inches, Cm, RGBColor
