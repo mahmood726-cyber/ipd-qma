@@ -1,0 +1,12 @@
+
+# Truth-recovery yardstick -- ipd-qma (quantile treatment effects)
+reps=30/cell  k=5  n_boot=40  quantiles=[0.1, 0.5, 0.9]  seed=20260613
+
+coverage of the TRUE QTE at each quantile (should be ~0.95)
+
+scenario                           | q=0.1 q=0.5 q=0.9
+location shift d=0.5, homog        | 0.967  1.000  1.000   (n=30)
+location shift d=0.5, heterog      | 1.000  0.933  1.000   (n=30)
+scale change s=1.5 (tail QTEs)     | 0.967  1.000  1.000   (n=30)
+
+(tail quantiles q=0.1/0.9 are the hard cases. 211.7s)

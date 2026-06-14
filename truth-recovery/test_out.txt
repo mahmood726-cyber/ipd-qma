@@ -1,0 +1,6 @@
+PASS  recovers the true tail QTE at q=0.1 (hard case)  (coverage 1.0, n=20)
+PASS  recovers the true tail QTE at q=0.9 (hard case)  (coverage 1.0)
+PASS  recovers the true median QTE at q=0.5  (coverage 1.0)
+PASS  coverage is at/above nominal (conservative, not anti-conservative)  (min coverage 1.0)
+
+All measured invariants hold.
