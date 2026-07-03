@@ -455,3 +455,106 @@ class TestCoverage:
         assert coverage >= 0.85, (
             f"Coverage = {coverage:.2f} ({covered}/{n_sims}), expected >= 0.85"
         )
+
+
+# ============================================================
+# 8. tau^2 sensitivity profile (DL / REML / PM) wired into engine
+# ============================================================
+
+def _fit_small(seed=123, vr=2.0, K=6, n_boot=60):
+    """Fit a small IPD-QMA on a seeded scale-shift scenario (helper)."""
+    rng = np.random.default_rng(seed)
+    sf = np.sqrt(vr)
+    studies_data = []
+    for _ in range(K):
+        n = int(rng.integers(80, 160))
+        c = rng.standard_normal(n)
+        t = rng.standard_normal(n) * sf
+        studies_data.append((c, t))
+    qma = IPDQMA(quantiles=[0.1, 0.5, 0.9], n_boot=n_boot, seed=seed)
+    # Silence the verbose fit summary.
+    import io
+    import contextlib
+    with contextlib.redirect_stdout(io.StringIO()):
+        qma.fit(studies_data)
+    return qma
+
+
+class TestTau2SensitivityProfile:
+
+    def test_requires_fit_first(self):
+        qma = IPDQMA(quantiles=[0.1, 0.5, 0.9], n_boot=20, seed=1)
+        with pytest.raises(ValueError):
+            qma.tau2_sensitivity_profile()
+
+    def test_shape_and_methods(self):
+        qma = _fit_small()
+        sens = qma.tau2_sensitivity_profile()
+        # 3 quantiles x 3 estimators = 9 rows.
+        assert len(sens) == 9
+        assert list(sens.columns) == [
+            'Quantile', 'Method', 'tau2', 'Effect', 'SE',
+            'CI_Lower', 'CI_Upper', 'I2', 'Q', 'k'
+        ]
+        # DL reported first for each quantile.
+        for q in qma.quantiles:
+            methods = list(sens[sens['Quantile'] == q]['Method'])
+            assert methods == ['DL', 'REML', 'PM']
+
+    def test_dl_cell_reproduces_published_profile_exactly(self):
+        """The DL row must equal the DL-based .fit() profile to machine precision.
+
+        This is the load-bearing guarantee: the sensitivity layer is additive and
+        does NOT perturb the published scientific results.
+        """
+        qma = _fit_small()
+        profile = qma.results['profile']
+        sens = qma.tau2_sensitivity_profile()
+        dl = sens[sens['Method'] == 'DL'].reset_index(drop=True)
+        for i in range(len(qma.quantiles)):
+            assert dl.iloc[i]['Effect'] == pytest.approx(profile.iloc[i]['Effect'], abs=1e-12)
+            assert dl.iloc[i]['tau2'] == pytest.approx(profile.iloc[i]['tau2'], abs=1e-12)
+            assert dl.iloc[i]['CI_Lower'] == pytest.approx(profile.iloc[i]['CI_Lower'], abs=1e-12)
+            assert dl.iloc[i]['CI_Upper'] == pytest.approx(profile.iloc[i]['CI_Upper'], abs=1e-12)
+
+    def test_reml_pm_tau2_geq_dl_when_heterogeneous(self):
+        """Where DL sees heterogeneity, REML/PM tau^2 sit at or above DL (small-K bias)."""
+        qma = _fit_small()
+        sens = qma.tau2_sensitivity_profile()
+        for q in qma.quantiles:
+            sub = sens[sens['Quantile'] == q].set_index('Method')
+            dl_t2 = sub.loc['DL', 'tau2']
+            if dl_t2 > 1e-8:  # only meaningful when DL detects heterogeneity
+                assert sub.loc['REML', 'tau2'] >= dl_t2 - 1e-9
+                assert sub.loc['PM', 'tau2'] >= dl_t2 - 1e-9
+
+    def test_use_hksj_override_accepted(self):
+        qma = _fit_small()
+        sens_default = qma.tau2_sensitivity_profile()
+        sens_nohksj = qma.tau2_sensitivity_profile(use_hksj=False)
+        # Point estimates and tau^2 are independent of HKSJ; only SE/CI widen.
+        for meth in ('DL', 'REML', 'PM'):
+            a = sens_default[sens_default['Method'] == meth].reset_index(drop=True)
+            b = sens_nohksj[sens_nohksj['Method'] == meth].reset_index(drop=True)
+            for i in range(len(a)):
+                assert a.iloc[i]['Effect'] == pytest.approx(b.iloc[i]['Effect'], abs=1e-12)
+                assert a.iloc[i]['tau2'] == pytest.approx(b.iloc[i]['tau2'], abs=1e-12)
+
+
+class TestFitInputValidation:
+
+    def test_empty_studies_raises(self):
+        qma = IPDQMA(quantiles=[0.1, 0.5, 0.9], n_boot=20, seed=1)
+        with pytest.raises(ValueError):
+            qma.fit([])
+
+    def test_malformed_pair_raises(self):
+        qma = IPDQMA(quantiles=[0.1, 0.5, 0.9], n_boot=20, seed=1)
+        with pytest.raises(ValueError):
+            qma.fit([np.arange(30)])  # not a (control, treatment) pair
+
+    def test_label_length_mismatch_raises(self):
+        qma = IPDQMA(quantiles=[0.1, 0.5, 0.9], n_boot=20, seed=1)
+        c, t = np.random.default_rng(0).standard_normal((2, 40))
+        with pytest.raises(ValueError):
+            qma.fit([(c, t)], labels=["A", "B"])  # 1 study, 2 labels

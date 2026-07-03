@@ -355,6 +355,25 @@ class IPDQMA:
         dict with keys 'profile', 'slope_test', 'lnvr_test', 'md_test',
              'study_results', 'heterogeneity'
         """
+        # --- Input validation on the public entry point ---
+        try:
+            n_studies = len(studies_data)
+        except TypeError:
+            raise ValueError("studies_data must be a sequence of (control, treatment) pairs")
+        if n_studies < 1:
+            raise ValueError("Need at least 1 study to fit (got 0)")
+        for idx, pair in enumerate(studies_data):
+            try:
+                c, t = pair
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"studies_data[{idx}] must be a (control, treatment) pair"
+                )
+        if labels is not None and len(labels) != n_studies:
+            raise ValueError(
+                f"labels has length {len(labels)} but there are {n_studies} studies"
+            )
+
         if labels is None:
             labels = [f"Study {i+1}" for i in range(len(studies_data))]
 
@@ -645,6 +664,82 @@ class IPDQMA:
             'p_value': p_value,
             'contrast_matrix': C,
         }
+
+    def tau2_sensitivity_profile(self, use_hksj=None):
+        """
+        Between-study variance sensitivity analysis across DL / REML / PM.
+
+        The shipped engine pools each quantile's study-level effects with the
+        DerSimonian-Laird (DL) moment estimator. The IPD-QMA protocol names REML
+        as the intended primary estimator and calls for a DL/REML/PM sensitivity
+        analysis (Limitations / Future directions). This method delivers exactly
+        that: for every quantile it re-pools the *same* stage-1 study-level
+        estimates and SEs (already computed by ``.fit()``) under DL, REML, and
+        Paule-Mandel tau^2 estimators via :mod:`tau2_estimators`.
+
+        This is a purely additive diagnostic. It does NOT alter the DL-based
+        quantile estimates returned by ``.fit()`` / stored in ``self.results``;
+        the DL column here reproduces them (cross-check).
+
+        Parameters
+        ----------
+        use_hksj : bool or None
+            Whether to apply the HKSJ small-sample correction in the sensitivity
+            pools (default: inherit ``self.use_hksj``). Passing an explicit value
+            lets a caller contrast HKSJ vs classical inference.
+
+        Returns
+        -------
+        pandas.DataFrame
+            One row per (quantile, estimator) with columns:
+            ``Quantile, Method, tau2, Effect, SE, CI_Lower, CI_Upper, I2, Q, k``.
+            DL is reported first for each quantile.
+
+        Raises
+        ------
+        ValueError
+            If ``.fit()`` has not been run yet.
+        """
+        if self._study_results is None or self.results is None:
+            raise ValueError("Must call .fit() before tau2_sensitivity_profile()")
+
+        # Local import keeps the sensitivity layer optional for core users.
+        import tau2_estimators as te
+
+        if use_hksj is None:
+            use_hksj = self.use_hksj
+
+        rows = []
+        for q_idx, q in enumerate(self.quantiles):
+            est = np.array(
+                [s.quantile_effects[q_idx] for s in self._study_results],
+                dtype=np.float64,
+            )
+            se = np.array(
+                [s.se_quantiles[q_idx] for s in self._study_results],
+                dtype=np.float64,
+            )
+            # Guard degenerate SEs exactly as _pool_dl does, so the DL cell of the
+            # sensitivity table matches the published profile.
+            se = np.maximum(se, 1e-12)
+            table = te.tau2_sensitivity(
+                est, se, conf_level=self.conf_level, use_hksj=use_hksj
+            )
+            for name, pool in table.items():  # dict preserves DL, REML, PM order
+                rows.append({
+                    'Quantile': q,
+                    'Method': name,
+                    'tau2': pool.tau2,
+                    'Effect': pool.estimate,
+                    'SE': pool.se,
+                    'CI_Lower': pool.ci_lower,
+                    'CI_Upper': pool.ci_upper,
+                    'I2': pool.I2,
+                    'Q': pool.Q,
+                    'k': pool.k,
+                })
+
+        return pd.DataFrame(rows)
 
     def plot_profile(self, ax=None, show=True, save_path=None):
         """
