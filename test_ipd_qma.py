@@ -558,3 +558,33 @@ class TestFitInputValidation:
         c, t = np.random.default_rng(0).standard_normal((2, 40))
         with pytest.raises(ValueError):
             qma.fit([(c, t)], labels=["A", "B"])  # 1 study, 2 labels
+
+
+# ============================================================
+# 9. Reproducible benchmark script (benchmark_tau2_sensitivity.py)
+# ============================================================
+
+class TestBenchmarkScript:
+
+    def test_run_scenario_and_self_check(self):
+        """The worked-example benchmark runs deterministically and its DL cell
+        reproduces the published DL profile (self_check returns True)."""
+        import benchmark_tau2_sensitivity as bench
+        qma, true_params = bench.run_scenario(k=6, vr=1.5, n_boot=60, seed=2026)
+        sens = qma.tau2_sensitivity_profile()
+        assert bench.self_check(qma, sens) is True
+        # Table has 3 estimators x 5 default quantiles.
+        assert len(sens) == 15
+
+    def test_cli_self_check_returns_zero(self):
+        """`--self-check` is a reproducibility gate: exit 0 when DL cell matches."""
+        import benchmark_tau2_sensitivity as bench
+        rc = bench.main(["--k", "6", "--n-boot", "40", "--self-check"])
+        assert rc == 0
+
+    def test_cli_rejects_bad_args(self):
+        import benchmark_tau2_sensitivity as bench
+        with pytest.raises(SystemExit):
+            bench.main(["--vr", "0"])       # variance ratio must be > 0
+        with pytest.raises(SystemExit):
+            bench.main(["--k", "0"])        # need >= 1 study
