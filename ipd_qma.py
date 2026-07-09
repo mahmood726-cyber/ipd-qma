@@ -17,10 +17,20 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
-import statsmodels.api as sm
 from dataclasses import dataclass
 from typing import Optional
 import warnings
+
+try:
+    import statsmodels.api as sm
+except ModuleNotFoundError:
+    sm = None
+
+
+def _add_constant(x: np.ndarray) -> np.ndarray:
+    """Minimal add_constant fallback for the two-arm design matrix."""
+    x = np.asarray(x, dtype=np.float64)
+    return np.column_stack([np.ones(len(x), dtype=np.float64), x])
 
 
 @dataclass
@@ -151,7 +161,7 @@ class IPDQMA:
         # Construct design matrix: Y = alpha + beta * Treatment
         y = np.concatenate([control, treatment])
         t_indicator = np.concatenate([np.zeros(n_c), np.ones(n_t)])
-        X = sm.add_constant(t_indicator)
+        X = sm.add_constant(t_indicator) if sm is not None else _add_constant(t_indicator)
 
         # --- Point estimates via quantile regression ---
         n_q = len(self.quantiles)
@@ -162,6 +172,8 @@ class IPDQMA:
             warnings.simplefilter("ignore")
             for i, q in enumerate(self.quantiles):
                 try:
+                    if sm is None:
+                        raise ModuleNotFoundError("statsmodels")
                     model = sm.QuantReg(y, X)
                     res = model.fit(q=q, max_iter=1000, p_tol=1e-6)
                     obs_effects[i] = res.params[1]  # treatment coefficient
@@ -181,10 +193,16 @@ class IPDQMA:
                 bc = control[self.rng.integers(0, n_c, n_c)]
                 bt = treatment[self.rng.integers(0, n_t, n_t)]
                 yb = np.concatenate([bc, bt])
-                Xb = sm.add_constant(np.concatenate([np.zeros(n_c), np.ones(n_t)]))
+                Xb = (
+                    sm.add_constant(np.concatenate([np.zeros(n_c), np.ones(n_t)]))
+                    if sm is not None
+                    else _add_constant(np.concatenate([np.zeros(n_c), np.ones(n_t)]))
+                )
 
                 for i, q in enumerate(self.quantiles):
                     try:
+                        if sm is None:
+                            raise ModuleNotFoundError("statsmodels")
                         res_b = sm.QuantReg(yb, Xb).fit(q=q, max_iter=500, p_tol=1e-5)
                         boot_effects[i, b] = res_b.params[1]
                     except Exception:
